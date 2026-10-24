@@ -1,51 +1,26 @@
 {
   "version": 2,
-  "builds": [
+  "cleanUrls": true,
+  "rewrites": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/health",
-      "dest": "api/index.py"
+      "source": "/health",
+      "destination": "/api/index.py"
     },
     {
-      "src": "/complaint/(.*)",
-      "dest": "api/index.py"
+      "source": "/complaint/:path*",
+      "destination": "/api/index.py"
     },
     {
-      "src": "/status/(.*)",
-      "dest": "api/index.py"
+      "source": "/status/:path*",
+      "destination": "/api/index.py"
     },
     {
-      "src": "/directory/(.*)",
-      "dest": "api/index.py"
+      "source": "/directory/:path*",
+      "destination": "/api/index.py"
     },
     {
-      "src": "/docs",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/openapi.json",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/css/(.*)",
-      "dest": "public/css/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "public/js/$1"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "public/assets/$1"
-    },
-    {
-      "src": "/",
-      "dest": "public/index.html"
+      "source": "/docs",
+      "destination": "/api/index.py"
     }
   ]
 }
