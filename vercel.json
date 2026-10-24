@@ -3,27 +3,27 @@
   "rewrites": [
     {
       "source": "/health",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/complaint/:path*",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/status/:path*",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/directory/:path*",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/docs",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/openapi.json",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/css/:path*",
