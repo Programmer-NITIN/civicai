@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AMC CivicAI — Autonomous Civic Complaint Agent. Report potholes, garbage, broken streetlights and water logging with AI-powered image analysis, automatic ward routing, and instant ticket creation.">
+    <title>AMC CivicAI | Nagarik Redressal Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to Main Content</a>
+
+    <!-- ── Site Header ────────────────────────────────────────────────── -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="#" class="brand" id="brand-link">
+                <div class="brand-icon" aria-hidden="true">🏛</div>
+                <div>
+                    <div class="brand-text">AMC CivicAI</div>
+                </div>
+                <span class="brand-badge">AMC • અમદાવાદ</span>
+            </a>
+            <nav class="nav-links" aria-label="Main Navigation">
+                <button class="nav-link active" data-page="report" id="nav-report">Report Issue</button>
+                <button class="nav-link" data-page="track" id="nav-track">Ticket Lookup & Tracker</button>
+                <button class="nav-link" data-page="directory" id="nav-directory">Ward & Dept Directory</button>
+                <a href="tel:155303" class="nav-helpline" aria-label="Call AMC helpline 155303">📞 155303</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ── Main Content ───────────────────────────────────────────────── -->
+    <main id="main-content" class="container" aria-label="Civic Complaint Console">
+
+        <!-- ══════════════ PAGE 1: Report Issue ══════════════ -->
+        <section id="page-report" class="page-section fade-in" aria-labelledby="hero-title">
+            <div class="hero">
+                <div class="hero-badge">⚡ Zero Bureaucracy • Instant Civic AI Routing</div>
+                <h1 id="hero-title">Snap, Confirm & Resolve</h1>
+                <p class="subtitle">No ward knowledge needed. Just drop a photo or choose an issue, and AMC CivicAI will pinpoint the ward, classify severity, and dispatch municipal crews in seconds.</p>
+            </div>
+
+            <div class="scenario-bar">
+                <span class="label">Common Cases:</span>
+                <button class="scenario-chip active" data-scenario="pothole" id="scenario-pothole">🕳 SG Highway Pothole</button>
+                <button class="scenario-chip" data-scenario="pipe_burst" id="scenario-pipe">🚰 Navrangpura Water Pipe Burst</button>
+                <button class="scenario-chip" data-scenario="garbage_dump" id="scenario-garbage">🗑 Garbage Dump / Solid Waste</button>
+                <button class="scenario-chip" data-scenario="streetlight_off" id="scenario-light">💡 Streetlight Inactive</button>
+                <div class="dispatch-badge">● Avg Dispatch: 18 mins</div>
+            </div>
+
+            <div class="split-layout">
+                <!-- Left: Evidence Panel -->
+                <div>
+                    <div class="card evidence-card" aria-label="Incident Evidence Upload">
+                        <div class="card-header">
+                            <div class="card-title"><span class="evidence-number">1</span> Incident Evidence</div>
+                            <span class="image-meta" id="gps-status">📍 GPS Metadata Parsed</span>
+                        </div>
+
+                        <div class="image-container" id="image-container">
+                            <div class="image-placeholder" id="image-placeholder" role="button" tabindex="0" aria-label="Click to upload a photo of the civic issue">
+                                <span class="icon">📸</span>
+                                <p>Drag & drop a photo or click to browse</p>
+                                <span style="font-size:0.75rem; color: var(--on-surface-variant);">JPG, PNG, WebP • Max 10MB</span>
+                            </div>
+                            <img id="preview-image" class="d-none" alt="Uploaded civic issue photograph">
+                            <div class="image-overlay-badge d-none" id="confidence-badge">✓ AI Visual Confidence 98.4%</div>
+                        </div>
+                        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" class="d-none" aria-label="Upload photo of civic issue">
+
+                        <div class="image-meta">
+                            <span id="filename-display">No file selected</span>
+                            <div style="display:flex; gap: 0.5rem;">
+                                <button class="btn btn-secondary" id="btn-retake" style="padding:0.35rem 0.75rem; font-size:0.78rem;" aria-label="Retake photo">📷 Retake</button>
+                                <button class="btn btn-secondary" id="btn-browse" style="padding:0.35rem 0.75rem; font-size:0.78rem;" aria-label="Browse files">⬆ Browse</button>
+                            </div>
+                        </div>
+
+                        <div class="gps-card" id="gps-card">
+                            <div class="label">AUTO-GEOLOCATED SITE</div>
+                            <div class="value" id="gps-address">Pakwan Crossroad, SG Highway, Bodakdev</div>
+                            <div class="coords" id="gps-coords">23.0487° N, 72.5074° E</div>
+                        </div>
+                    </div>
+
+                    <!-- Citizen Form -->
+                    <div class="card" style="margin-top: var(--space-md);">
+                        <form id="complaint-form">
+                            <div id="form-error" class="form-error" role="alert" aria-live="assertive"></div>
+
+                            <fieldset style="border:none; padding:0;">
+                                <legend class="sr-only">Citizen Details</legend>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="citizen-name">Full Name</label>
+                                        <input type="text" id="citizen-name" required minlength="1" maxlength="100" placeholder="e.g. Keval M. Shah" aria-describedby="name-help">
+                                        <span id="name-help" class="sr-only">Enter your full name as the reporting citizen</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="citizen-phone">Phone Number</label>
+                                        <input type="tel" id="citizen-phone" required minlength="10" maxlength="15" pattern="^\+?[0-9]{10,15}$" placeholder="e.g. 9825012345" aria-describedby="phone-help">
+                                        <span id="phone-help" class="sr-only">Enter your 10-digit mobile number</span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="area-address">Area / Landmark / Address</label>
+                                    <input type="text" id="area-address" required minlength="2" maxlength="200" placeholder="e.g. Pakwan Cross Road, near SG Highway, Bodakdev" aria-describedby="area-help">
+                                    <span id="area-help" class="sr-only">Enter the area name or landmark near the incident for ward lookup</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="description">Citizen Remark (Optional)</label>
+                                    <textarea id="description" maxlength="1000" placeholder="Deep pothole damaging two-wheelers during evening rush hour near service lane." aria-describedby="desc-help"></textarea>
+                                    <span id="desc-help" class="sr-only">Optional description of the civic issue</span>
+                                </div>
+                            </fieldset>
+
+                            <button type="submit" class="btn btn-primary" id="submit-btn">
+                                <span id="btn-text">▶ Submit Grievance & Get Updates</span>
+                                <div class="spinner" id="btn-spinner" aria-hidden="true"></div>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right: Agent Pipeline -->
+                <div>
+                    <div class="card pipeline-card" id="pipeline-panel" aria-label="Autonomous Agent Resolution Pipeline">
+                        <div class="pipeline-header">
+                            <div>
+                                <div class="pipeline-title">Autonomous Agent Resolution Pipeline</div>
+                                <div class="pipeline-subtitle">Gemini Vision 2.0 Civic-Agent Tool Tracing</div>
+                            </div>
+                            <span class="execution-badge pending" id="pipeline-badge">Awaiting Input</span>
+                        </div>
+
+                        <!-- Tool Step 1 -->
+                        <div class="tool-step pending" id="step-1">
+                            <div class="tool-step-header">
+                                <div>
+                                    <div class="tool-step-title"><span class="evidence-number">1</span> Image Vision & Hazard Severity Matrix</div>
+                                    <div class="tool-step-function">amc.vision.classify_hazard(source_img="...")</div>
+                                </div>
+                                <div class="tool-step-badges">
+                                    <span class="latency-badge" id="step-1-latency">—</span>
+                                    <span class="status-badge pending" id="step-1-status">PENDING</span>
+                                </div>
+                            </div>
+                            <div class="tool-step-body" id="step-1-body"></div>
+                        </div>
+
+                        <!-- Tool Step 2 -->
+                        <div class="tool-step pending" id="step-2">
+                            <div class="tool-step-header">
+                                <div>
+                                    <div class="tool-step-title"><span class="evidence-number">2</span> GIS Ward & Administrative Boundary Map</div>
+                                    <div class="tool-step-function">amc.gis.resolve_ward_polygon(lat=..., lng=...)</div>
+                                </div>
+                                <div class="tool-step-badges">
+                                    <span class="latency-badge" id="step-2-latency">—</span>
+                                    <span class="status-badge pending" id="step-2-status">PENDING</span>
+                                </div>
+                            </div>
+                            <div class="tool-step-body" id="step-2-body"></div>
+                        </div>
+
+                        <!-- Tool Step 3 -->
+                        <div class="tool-step pending" id="step-3">
+                            <div class="tool-step-header">
+                                <div>
+                                    <div class="tool-step-title"><span class="evidence-number">3</span> Department SLA & Field Officer Routing</div>
+                                    <div class="tool-step-function">amc.dispatch.assign_ticket(dept=..., priority=...)</div>
+                                </div>
+                                <div class="tool-step-badges">
+                                    <span class="latency-badge" id="step-3-latency">—</span>
+                                    <span class="status-badge pending" id="step-3-status">PENDING</span>
+                                </div>
+                            </div>
+                            <div class="tool-step-body" id="step-3-body"></div>
+                        </div>
+
+                        <!-- Tool Step 4 -->
+                        <div class="tool-step pending" id="step-4">
+                            <div class="tool-step-header">
+                                <div>
+                                    <div class="tool-step-title"><span class="evidence-number">4</span> Omnichannel Citizen Dispatch Notification</div>
+                                    <div class="tool-step-function">amc.ticket.create(citizen=..., ward=...)</div>
+                                </div>
+                                <div class="tool-step-badges">
+                                    <span class="latency-badge" id="step-4-latency">—</span>
+                                    <span class="status-badge pending" id="step-4-status">PENDING</span>
+                                </div>
+                            </div>
+                            <div class="tool-step-body" id="step-4-body"></div>
+                        </div>
+
+                        <!-- Ticket Result Card -->
+                        <div class="ticket-card d-none" id="ticket-result">
+                            <div class="ticket-id" id="result-ticket-id">#AMC-2025-RD-00001</div>
+                            <div class="ticket-label">AMC Central Redressal Gateway Token</div>
+                            <div class="ticket-sla" id="result-sla">⏱ SLA: 24 Hours (Urgent)</div>
+                            <div class="ticket-actions">
+                                <button class="btn" id="btn-copy-id" aria-label="Copy ticket ID">📋 Copy ID</button>
+                                <button class="btn" id="btn-track-ticket" aria-label="Track this ticket">🔍 Track Grievance</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════ PAGE 2: Ticket Tracker ══════════════ -->
+        <section id="page-track" class="page-section d-none" aria-labelledby="track-title">
+            <div class="hero">
+                <div class="hero-badge">🔒 AMC Redressal SLA Guarantee • Citizen Charter Rule 14B</div>
+                <h2 id="track-title" style="font-family:var(--font-display); font-size:clamp(1.5rem,3.5vw,2.25rem); font-weight:700; letter-spacing:-0.02em;">Track Your Municipal Grievance</h2>
+                <p class="subtitle">Real-time telemetry, automated civic AI routing, and field unit GPS coordinates for Ahmedabad Municipal Corporation civic incidents.</p>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="track-input" placeholder="#AMC-2025-RD-00001" aria-label="Enter grievance tracking ID" maxlength="30">
+                <button class="btn btn-primary" id="btn-track" style="width:auto;">Track Grievance →</button>
+            </div>
+
+            <div id="track-result" class="d-none fade-in"></div>
+            <div id="track-empty" class="card" style="text-align:center; padding:3rem; color:var(--on-surface-variant);">
+                <div style="font-size:3rem; margin-bottom:1rem;">🔍</div>
+                <h3 style="font-family:var(--font-display); margin-bottom:0.5rem;">Enter Your Tracking ID</h3>
+                <p style="font-size:0.88rem;">Paste your AMC grievance token (e.g. AMC-2025-RD-00001) to view real-time status.</p>
+            </div>
+        </section>
+
+        <!-- ══════════════ PAGE 3: Ward & Department Directory ══════════════ -->
+        <section id="page-directory" class="page-section d-none" aria-labelledby="dir-title">
+            <div class="hero">
+                <div class="hero-badge">🏛 AHMEDABAD CITY GOVERNANCE DIRECTORY • 48 WARDS & 7 ZONES</div>
+                <h2 id="dir-title" style="font-family:var(--font-display); font-size:clamp(1.5rem,3.5vw,2.25rem); font-weight:700; letter-spacing:-0.02em;">AMC Wards & Municipal Departments</h2>
+                <p class="subtitle">Explore administrative zones, ward officers, and average redressal times across all registered AMC wards.</p>
+            </div>
+
+            <div class="stats-grid" id="dir-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-wards">8</div>
+                    <div class="stat-label">Registered Wards</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-depts">4</div>
+                    <div class="stat-label">Municipal Departments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">24h</div>
+                    <div class="stat-label">Avg Resolution SLA</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">93.8%</div>
+                    <div class="stat-label">Citizen Satisfaction</div>
+                </div>
+            </div>
+
+            <h3 style="font-family:var(--font-display); font-weight:600; margin-top:2rem;">Electoral & Administrative Wards</h3>
+            <div class="ward-grid" id="ward-grid"></div>
+
+            <h3 style="font-family:var(--font-display); font-weight:600; margin-top:3rem;">Municipal Departments & Quick Contacts</h3>
+            <div class="dept-grid" id="dept-grid"></div>
+        </section>
+
+        <!-- Screen reader announcer -->
+        <div id="sr-announcer" class="sr-only" aria-live="polite"></div>
+    </main>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>🏛 Ahmedabad Municipal Corporation © 2025. All Rights Reserved.</span>
+            <div class="footer-links">
+                <a href="#">Citizen Charter SLA</a>
+                <a href="#">Municipal Grievance Guidelines</a>
+                <a href="#">AMC Emergency Ops</a>
+                <span class="footer-helpline">Toll-Free 155303</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ── Chat Widget ────────────────────────────────────────────────── -->
+    <button id="chat-toggle-btn" class="chat-toggle" aria-label="Open CivicAI Assistant" aria-expanded="false">🤖</button>
+    <div id="chat-widget" class="chat-widget" role="dialog" aria-labelledby="chat-title">
+        <div class="chat-header">
+            <h3 id="chat-title">AMC CivicAI Assistant</h3>
+            <button id="chat-close-btn" class="chat-close" aria-label="Close Assistant">✕</button>
+        </div>
+        <div id="chat-feed" class="chat-feed" aria-live="polite">
+            <div class="chat-msg ai">
+                Namaste! I am the AMC CivicAI Grievance Bot. I can help you file complaints, check ticket status, or find ward information. How can I assist you?
+            </div>
+        </div>
+        <div class="chat-suggestions">
+            <button class="chat-chip" data-query="What is the status of my complaint?">Check Status</button>
+            <button class="chat-chip" data-query="How do I report a pothole?">Report Issue</button>
+            <button class="chat-chip" data-query="What is the SLA for garbage complaints?">SLA Info</button>
+            <button class="chat-chip" data-query="Who is the ward officer for Bodakdev?">Ward Officer</button>
+        </div>
+        <form id="chat-form" class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Ask anything about civic grievances..." required aria-label="Message the assistant" maxlength="500">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
