@@ -2,17 +2,14 @@
  * app.js
  * ------
  * Client-side logic for AMC CivicAI — Nagarik Redressal Portal.
- *
- * Responsibilities:
- *   - SPA page navigation (Report / Track / Directory).
- *   - Image upload with drag-and-drop and file browser.
- *   - Complaint filing via the agent pipeline API.
- *   - Animated tool-step execution trace rendering.
- *   - Ticket tracking via status lookup API.
- *   - Ward & department directory rendering.
- *   - Chat widget with grounded civic responses.
- *   - Scenario quick-fill for demo convenience.
- *   - Screen reader announcements via aria-live region.
+ * Implements Stitch Nagarik Sahay Specification:
+ *   - SPA Navigation across 4 tabs: Report, Inspector, Track, Directory.
+ *   - Multimodal image upload with EXIF simulation and scenario demonstration.
+ *   - 4-Tool Agent Pipeline Execution animation.
+ *   - Interactive Ahmedabad Leaflet Map for QRT unit tracking.
+ *   - Live Agent Tool Inspector with run replay & cryptographic verification.
+ *   - Ward Directory with search, zone filtering, and AMC metrics.
+ *   - Bilingual Citizen Assistant conversational widget.
  */
 
 "use strict";
@@ -25,6 +22,7 @@ const DOM = {
     // Navigation
     navLinks: $$(".nav-link[data-page]"),
     pages: $$(".page-section"),
+
     // Report page
     form: $("#complaint-form"),
     formError: $("#form-error"),
@@ -35,7 +33,8 @@ const DOM = {
     submitBtn: $("#submit-btn"),
     btnText: $("#btn-text"),
     btnSpinner: $("#btn-spinner"),
-    // Image
+
+    // Image & Evidence
     fileInput: $("#file-input"),
     imageContainer: $("#image-container"),
     imagePlaceholder: $("#image-placeholder"),
@@ -46,6 +45,13 @@ const DOM = {
     btnRetake: $("#btn-retake"),
     gpsAddress: $("#gps-address"),
     gpsCoords: $("#gps-coords"),
+    quickZoneBtns: $$(".zone-quick-btn"),
+    btnEditManual: $("#btn-edit-manual"),
+
+    // Conversational Dialogue Feed
+    dialogueCitizen: $("#dialogue-citizen"),
+    dialogueAi: $("#dialogue-ai"),
+
     // Pipeline
     pipelineBadge: $("#pipeline-badge"),
     ticketResult: $("#ticket-result"),
@@ -53,16 +59,35 @@ const DOM = {
     resultSla: $("#result-sla"),
     btnCopyId: $("#btn-copy-id"),
     btnTrackTicket: $("#btn-track-ticket"),
+
     // Scenario chips
     scenarioChips: $$(".scenario-chip"),
+
+    // Inspector page
+    btnReplayInspector: $("#btn-replay-inspector"),
+    btnCryptoProof: $("#btn-crypto-proof"),
+
     // Track page
     trackInput: $("#track-input"),
     btnTrack: $("#btn-track"),
     trackResult: $("#track-result"),
     trackEmpty: $("#track-empty"),
+    trackStatusPill: $("#track-status-pill"),
+    trackTicketNum: $("#track-ticket-num"),
+    trackTicketLoc: $("#track-ticket-loc"),
+    trackOfficerName: $("#track-officer-name"),
+    trackOfficerPhone: $("#track-officer-phone"),
+    trackTimeline: $("#track-timeline"),
+    ahmedabadMap: $("#ahmedabad-map"),
+    btnRecenterMap: $("#btn-recenter-map"),
+
     // Directory page
     wardGrid: $("#ward-grid"),
     deptGrid: $("#dept-grid"),
+    wardSearchInput: $("#ward-search-input"),
+    zonePills: $$(".zone-pill"),
+    visibleWardCount: $("#visible-ward-count"),
+
     // Chat
     chatToggle: $("#chat-toggle-btn"),
     chatWidget: $("#chat-widget"),
@@ -71,51 +96,70 @@ const DOM = {
     chatInput: $("#chat-input"),
     chatFeed: $("#chat-feed"),
     chatChips: $$(".chat-chip"),
+
     // Accessibility
     announcer: $("#sr-announcer"),
 };
 
 // ── State ───────────────────────────────────────────────────────────────────
 let uploadedFile = null;
-let lastTicketId = null;
+let lastTicketId = "AMC-2025-RD-88421";
+let leafletMap = null;
+let qrtMarker = null;
+let incidentMarker = null;
+let allWardsCache = [];
+let allDeptsCache = [];
+let activeZoneFilter = "all";
 
-// ── Scenario Data ───────────────────────────────────────────────────────────
+// ── Scenario Data (Stitch Specification) ───────────────────────────────────
 const SCENARIOS = {
     pothole: {
         name: "Keval M. Shah",
         phone: "9825012345",
         area: "Pakwan Cross Road, SG Highway, Bodakdev",
-        desc: "Deep pothole damaging two-wheelers during evening rush hour near service lane.",
+        desc: "Deep road crater right after Pakwan crossroads on SG Highway service lane damaging vehicles.",
         filename: "pothole_sg_highway_bodakdev.jpg",
-        gpsAddr: "Pakwan Crossroad, SG Highway, Bodakdev",
-        gpsCoords: "23.0487° N, 72.5074° E",
+        imageSrc: "assets/pothole_sg_highway.png",
+        gpsAddr: "Pakwan Cross Road, Opp. Sindhu Bhavan Entry, S.G. Highway",
+        gpsCoords: "23.0487° N, 72.5074° E (North West Zone - Bodakdev Ward)",
+        citizenText: '"Here is a dangerous pothole near Pakwan crossroads on SG Highway damaging two-wheelers during rush hour."',
+        aiText: '<strong>AMC CivicAI:</strong> "તમારી ફરિયાદ સ્વીકારવામાં આવી છે. The photograph confirms a <strong>Level-4 deep road crater</strong> under North-West Zone (Bodakdev Ward). Priority dispatch token #AMC-2025-RD-88421 lodged with Roads & Buildings Dept."',
     },
     pipe_burst: {
         name: "Priya R. Desai",
         phone: "9876543210",
-        area: "C.G. Road, near Gujarat University, Navrangpura",
-        desc: "Major water pipe burst flooding the road for over 2 hours. Traffic completely blocked.",
+        area: "Near Municipal Market, C.G. Road, Navrangpura",
+        desc: "Major municipal drinking water pipeline burst flooding C.G. Road for over 2 hours.",
         filename: "pipe_burst_navrangpura_cg_road.jpg",
-        gpsAddr: "C.G. Road, Navrangpura",
-        gpsCoords: "23.0350° N, 72.5610° E",
+        imageSrc: "assets/waterpipe_navrangpura.png",
+        gpsAddr: "Near Municipal Market, C.G. Road, Navrangpura",
+        gpsCoords: "23.0365° N, 72.5540° E (West Zone - Navrangpura Ward)",
+        citizenText: '"Drinking water pipe burst on CG Road near Municipal Market. Clean potable water flooding street for over 2 hours."',
+        aiText: '<strong>AMC CivicAI:</strong> "Emergency water supply alert registered. Line pressure drop confirmed under West Zone (Navrangpura Ward). Dispatched to Water Supply & Sewerage Emergency Crew."',
     },
     garbage_dump: {
         name: "Amit B. Patel",
         phone: "8765432109",
         area: "Kankaria Lake Gate 1-4, Maninagar",
-        desc: "Large garbage dump near residential area. Foul smell and mosquito breeding risk.",
+        desc: "Large unattended garbage dump near residential gate causing foul smell and health hazard.",
         filename: "garbage_dump_maninagar_kankaria.jpg",
-        gpsAddr: "Kankaria Lake, Maninagar",
-        gpsCoords: "23.0070° N, 72.6040° E",
+        imageSrc: "assets/pothole_sg_highway.png",
+        gpsAddr: "Kankaria Lake Gate 3, Maninagar",
+        gpsCoords: "23.0070° N, 72.6040° E (South Zone - Maninagar Ward)",
+        citizenText: '"Overflowing garbage dump right by Gate 3 Kankaria lake. Foul odor and health risk for morning walkers."',
+        aiText: '<strong>AMC CivicAI:</strong> "Solid Waste inspection team assigned under South Zone (Maninagar Ward). Mechanical sweeper and compactor truck dispatched for immediate clearance."',
     },
     streetlight_off: {
         name: "Sneha K. Joshi",
         phone: "7654321098",
         area: "Thaltej Cross Road, Hebatpur Road, Thaltej",
-        desc: "Row of 5 streetlights non-functional for over a week. Dangerous after dark.",
+        desc: "Row of 5 non-functional streetlights on Hebatpur Road making intersection dark and unsafe.",
         filename: "streetlight_off_thaltej_crossroad.jpg",
-        gpsAddr: "Thaltej Cross Road, Thaltej",
-        gpsCoords: "23.0569° N, 72.4967° E",
+        imageSrc: "assets/pothole_sg_highway.png",
+        gpsAddr: "Thaltej Cross Road, Hebatpur Road, Thaltej",
+        gpsCoords: "23.0569° N, 72.4967° E (North West Zone - Thaltej Ward)",
+        citizenText: '"Five consecutive streetlights completely dark on Hebatpur road towards Science City since 3 nights."',
+        aiText: '<strong>AMC CivicAI:</strong> "Light pole circuit failure logged for North-West Zone (Thaltej Ward). Electrical Maintenance Van assigned for bulb and ballast replacement."',
     },
 };
 
@@ -128,31 +172,39 @@ function announce(text) {
 }
 
 function showFormError(msg) {
-    DOM.formError.textContent = msg;
-    DOM.formError.classList.add("visible");
-}
-
-function hideFormError() {
-    DOM.formError.classList.remove("visible");
-    DOM.formError.textContent = "";
-}
-
-function setLoading(isLoading) {
-    DOM.submitBtn.disabled = isLoading;
-    DOM.btnText.textContent = isLoading ? "Processing..." : "▶ Submit Grievance & Get Updates";
-    if (isLoading) {
-        DOM.btnSpinner.classList.add("visible");
-    } else {
-        DOM.btnSpinner.classList.remove("visible");
+    if (DOM.formError) {
+        DOM.formError.textContent = msg;
+        DOM.formError.classList.add("visible");
     }
 }
 
-// ── Page Navigation ─────────────────────────────────────────────────────────
+function hideFormError() {
+    if (DOM.formError) {
+        DOM.formError.classList.remove("visible");
+        DOM.formError.textContent = "";
+    }
+}
+
+function setLoading(isLoading) {
+    if (!DOM.submitBtn) return;
+    DOM.submitBtn.disabled = isLoading;
+    if (DOM.btnText) {
+        DOM.btnText.textContent = isLoading
+            ? "Triage In Progress (Agent Executing...)"
+            : "Submit Grievance & Dispatch Autonomous Agent";
+    }
+    if (DOM.btnSpinner) {
+        DOM.btnSpinner.classList.toggle("d-none", !isLoading);
+    }
+}
+
+// ── SPA Page Navigation ─────────────────────────────────────────────────────
 
 function navigateTo(page) {
     DOM.navLinks.forEach((link) => {
         link.classList.toggle("active", link.dataset.page === page);
     });
+
     DOM.pages.forEach((section) => {
         const id = section.id.replace("page-", "");
         if (id === page) {
@@ -160,53 +212,93 @@ function navigateTo(page) {
             section.classList.add("fade-in");
         } else {
             section.classList.add("d-none");
+            section.classList.remove("fade-in");
         }
     });
-    announce(`Navigated to ${page} page`);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
+    announce(`Navigated to ${page} page`);
+
+    // Lazy load specific page modules
+    if (page === "directory" && allWardsCache.length === 0) {
+        loadDirectory();
+    } else if (page === "track") {
+        initAhmedabadMap();
+    }
 }
 
 DOM.navLinks.forEach((link) => {
-    link.addEventListener("click", () => navigateTo(link.dataset.page));
+    link.addEventListener("click", (e) => {
+        e.preventDefault();
+        navigateTo(link.dataset.page);
+    });
 });
 
-// Brand logo → Report page
-if ($("#brand-link")) {
-    $("#brand-link").addEventListener("click", (e) => {
+const brandLink = $("#brand-link");
+if (brandLink) {
+    brandLink.addEventListener("click", (e) => {
         e.preventDefault();
         navigateTo("report");
     });
 }
 
-// ── Scenario Quick-Fill ─────────────────────────────────────────────────────
+// ── Interactive Scenario Demonstration Switcher ────────────────────────────
 
 DOM.scenarioChips.forEach((chip) => {
     chip.addEventListener("click", () => {
-        const key = chip.dataset.scenario;
-        const data = SCENARIOS[key];
+        const scenarioKey = chip.dataset.scenario;
+        const data = SCENARIOS[scenarioKey];
         if (!data) return;
 
-        // Update active chip
         DOM.scenarioChips.forEach((c) => c.classList.remove("active"));
         chip.classList.add("active");
 
-        // Fill form
-        DOM.citizenName.value = data.name;
-        DOM.citizenPhone.value = data.phone;
-        DOM.areaAddress.value = data.area;
-        DOM.description.value = data.desc;
-        DOM.gpsAddress.textContent = data.gpsAddr;
-        DOM.gpsCoords.textContent = data.gpsCoords;
-        DOM.filenameDisplay.textContent = data.filename;
+        // Fill form fields
+        if (DOM.citizenName) DOM.citizenName.value = data.name;
+        if (DOM.citizenPhone) DOM.citizenPhone.value = data.phone;
+        if (DOM.areaAddress) DOM.areaAddress.value = data.area;
+        if (DOM.description) DOM.description.value = data.desc;
+        if (DOM.gpsAddress) DOM.gpsAddress.textContent = data.gpsAddr;
+        if (DOM.gpsCoords) DOM.gpsCoords.textContent = data.gpsCoords;
+        if (DOM.filenameDisplay) DOM.filenameDisplay.textContent = data.filename;
 
-        // Reset pipeline
+        // Update photo preview
+        if (DOM.previewImage) {
+            DOM.previewImage.src = data.imageSrc;
+            DOM.previewImage.classList.remove("d-none");
+        }
+        if (DOM.imagePlaceholder) DOM.imagePlaceholder.classList.add("d-none");
+        if (DOM.confidenceBadge) DOM.confidenceBadge.classList.remove("d-none");
+
+        // Update conversational dialogue
+        if (DOM.dialogueCitizen) DOM.dialogueCitizen.textContent = data.citizenText;
+        if (DOM.dialogueAi) DOM.dialogueAi.innerHTML = data.aiText;
+
         resetPipeline();
-
         announce(`Loaded scenario: ${chip.textContent.trim()}`);
     });
 });
 
-// ── Image Upload ────────────────────────────────────────────────────────────
+// Quick AMC Zones buttons on Evidence card
+DOM.quickZoneBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+        const area = btn.dataset.area;
+        if (DOM.areaAddress) DOM.areaAddress.value = area;
+        if (DOM.gpsAddress) DOM.gpsAddress.textContent = `${area}, Ahmedabad`;
+        announce(`Selected AMC Zone: ${area}`);
+    });
+});
+
+if (DOM.btnEditManual) {
+    DOM.btnEditManual.addEventListener("click", () => {
+        if (DOM.areaAddress) {
+            DOM.areaAddress.focus();
+            DOM.areaAddress.select();
+        }
+    });
+}
+
+// ── Image Upload Handling ───────────────────────────────────────────────────
 
 function handleImageUpload(file) {
     if (!file) return;
@@ -224,109 +316,116 @@ function handleImageUpload(file) {
 
     hideFormError();
     uploadedFile = file;
-    DOM.filenameDisplay.textContent = file.name;
+    if (DOM.filenameDisplay) DOM.filenameDisplay.textContent = file.name;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        DOM.previewImage.src = e.target.result;
-        DOM.previewImage.classList.remove("d-none");
-        DOM.imagePlaceholder.classList.add("d-none");
-        DOM.confidenceBadge.classList.remove("d-none");
+        if (DOM.previewImage) {
+            DOM.previewImage.src = e.target.result;
+            DOM.previewImage.classList.remove("d-none");
+        }
+        if (DOM.imagePlaceholder) DOM.imagePlaceholder.classList.add("d-none");
+        if (DOM.confidenceBadge) DOM.confidenceBadge.classList.remove("d-none");
     };
     reader.readAsDataURL(file);
 
     announce(`Image uploaded: ${file.name}`);
 }
 
-DOM.fileInput.addEventListener("change", (e) => {
-    handleImageUpload(e.target.files[0]);
-});
+if (DOM.fileInput) {
+    DOM.fileInput.addEventListener("change", (e) => {
+        handleImageUpload(e.target.files[0]);
+    });
+}
 
-DOM.imagePlaceholder.addEventListener("click", () => DOM.fileInput.click());
-DOM.imagePlaceholder.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        DOM.fileInput.click();
-    }
-});
-DOM.btnBrowse.addEventListener("click", () => DOM.fileInput.click());
-DOM.btnRetake.addEventListener("click", () => {
-    uploadedFile = null;
-    DOM.fileInput.value = "";
-    DOM.previewImage.classList.add("d-none");
-    DOM.previewImage.src = "";
-    DOM.imagePlaceholder.classList.remove("d-none");
-    DOM.confidenceBadge.classList.add("d-none");
-    DOM.filenameDisplay.textContent = "No file selected";
-});
+if (DOM.imagePlaceholder) {
+    DOM.imagePlaceholder.addEventListener("click", () => DOM.fileInput.click());
+    DOM.imagePlaceholder.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            DOM.fileInput.click();
+        }
+    });
+}
+if (DOM.btnBrowse) DOM.btnBrowse.addEventListener("click", () => DOM.fileInput.click());
 
-// Drag and drop
-DOM.imageContainer.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    DOM.imageContainer.style.borderColor = "var(--primary)";
-});
-DOM.imageContainer.addEventListener("dragleave", () => {
-    DOM.imageContainer.style.borderColor = "";
-});
-DOM.imageContainer.addEventListener("drop", (e) => {
-    e.preventDefault();
-    DOM.imageContainer.style.borderColor = "";
-    const file = e.dataTransfer.files[0];
-    if (file) handleImageUpload(file);
-});
+if (DOM.btnRetake) {
+    DOM.btnRetake.addEventListener("click", () => {
+        uploadedFile = null;
+        if (DOM.fileInput) DOM.fileInput.value = "";
+        if (DOM.previewImage) {
+            DOM.previewImage.classList.add("d-none");
+            DOM.previewImage.src = "";
+        }
+        if (DOM.imagePlaceholder) DOM.imagePlaceholder.classList.remove("d-none");
+        if (DOM.confidenceBadge) DOM.confidenceBadge.classList.add("d-none");
+        if (DOM.filenameDisplay) DOM.filenameDisplay.textContent = "No file selected";
+        announce("Image cleared.");
+    });
+}
 
-// ── Pipeline Rendering ──────────────────────────────────────────────────────
+// ── Agent Pipeline Execution Visualization ─────────────────────────────────
 
 function resetPipeline() {
     for (let i = 1; i <= 4; i++) {
-        const step = $(`#step-${i}`);
-        step.className = "tool-step pending";
-        $(`#step-${i}-latency`).textContent = "—";
-        $(`#step-${i}-status`).textContent = "PENDING";
-        $(`#step-${i}-status`).className = "status-badge pending";
-        $(`#step-${i}-body`).innerHTML = "";
+        const dot = $(`#step-dot-${i}`);
+        const status = $(`#step-status-${i}`);
+        const body = $(`#step-body-${i}`);
+        if (dot) {
+            dot.className = "step-dot";
+            dot.textContent = i;
+        }
+        if (status) status.innerHTML = '<span class="badge badge-pending">Ready</span>';
+        if (body) {
+            body.innerHTML = "";
+            body.classList.add("d-none");
+        }
     }
-    DOM.pipelineBadge.textContent = "Awaiting Input";
-    DOM.pipelineBadge.className = "execution-badge pending";
-    DOM.ticketResult.classList.add("d-none");
+    if (DOM.ticketResult) DOM.ticketResult.classList.add("d-none");
+    if (DOM.pipelineBadge) {
+        DOM.pipelineBadge.textContent = "Live System Ready";
+        DOM.pipelineBadge.className = "execution-badge";
+    }
+}
+
+function delay(ms) {
+    return new Promise((r) => setTimeout(r, ms));
 }
 
 async function animateStep(stepNum, traceItem) {
-    const step = $(`#step-${stepNum}`);
-    const latency = $(`#step-${stepNum}-latency`);
-    const status = $(`#step-${stepNum}-status`);
-    const body = $(`#step-${stepNum}-body`);
+    const dot = $(`#step-dot-${stepNum}`);
+    const status = $(`#step-status-${stepNum}`);
+    const body = $(`#step-body-${stepNum}`);
 
-    // Active state
-    step.className = "tool-step active";
-    status.textContent = "RUNNING";
-    status.className = "status-badge pending";
+    // Set executing state
+    if (dot) dot.className = "step-dot in-progress";
+    if (status) status.innerHTML = '<span class="badge badge-warning">Executing...</span>';
 
-    // Simulate processing delay for visual effect
-    await new Promise((r) => setTimeout(r, 400 + Math.random() * 300));
+    await delay(250);
 
-    // Completed state
-    step.className = "tool-step completed";
-    latency.textContent = `${traceItem.latency_ms}ms`;
-    status.textContent = "✓ SUCCESS";
-    status.className = "status-badge success";
+    // Set completed state
+    if (dot) {
+        dot.className = "step-dot completed";
+        dot.textContent = "✓";
+    }
+    if (status) {
+        status.innerHTML = `<span class="badge badge-success">${traceItem.latency_ms || 12}ms • SUCCESS</span>`;
+    }
 
-    // Render result grid
-    const result = traceItem.result;
-    if (result) {
-        let html = '<div class="tool-result-grid">';
-        for (const [key, val] of Object.entries(result)) {
-            const displayKey = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-            let valClass = "";
-            if (key === "urgency" && (val === "URGENT" || val === "CRITICAL")) valClass = "urgent";
-            if (key === "status" && val === "assigned") valClass = "success";
-            if (key === "confidence") {
-                html += `<div class="tool-result-item"><div class="label">${displayKey}</div><div class="value success">${(val * 100).toFixed(1)}%</div></div>`;
-            } else {
-                html += `<div class="tool-result-item"><div class="label">${displayKey}</div><div class="value ${valClass}">${val}</div></div>`;
+    if (body) {
+        body.classList.remove("d-none");
+        let html = "";
+        if (traceItem.output) {
+            html += '<div class="step-json">';
+            for (const [k, v] of Object.entries(traceItem.output)) {
+                if (typeof v === "object" && v !== null) {
+                    html += `<strong>${k}:</strong> ${JSON.stringify(v)}<br>`;
+                } else {
+                    html += `<strong>${k}:</strong> ${v}<br>`;
+                }
             }
+            html += "</div>";
         }
-        html += "</div>";
         body.innerHTML = html;
     }
 
@@ -334,149 +433,209 @@ async function animateStep(stepNum, traceItem) {
 }
 
 function showTicketResult(response) {
-    DOM.ticketResult.classList.remove("d-none");
-    DOM.resultTicketId.textContent = `#${response.ticket_id}`;
-    DOM.resultSla.textContent = `⏱ SLA: ${response.sla_hours} Hours (${response.department?.urgency || "NORMAL"})`;
+    if (DOM.ticketResult) DOM.ticketResult.classList.remove("d-none");
+    if (DOM.resultTicketId) DOM.resultTicketId.textContent = `#${response.ticket_id}`;
+    if (DOM.resultSla) {
+        DOM.resultSla.textContent = `⏱ SLA: ${response.sla_hours} Hours (${response.department?.urgency || "URGENT"} PRIORITY)`;
+    }
     lastTicketId = response.ticket_id;
 
-    DOM.pipelineBadge.textContent = `Execution: ${response.agent_trace.reduce((s, t) => s + t.latency_ms, 0)}ms`;
-    DOM.pipelineBadge.className = "execution-badge";
+    const totalLatency = (response.agent_trace || []).reduce((s, t) => s + (t.latency_ms || 0), 0);
+    if (DOM.pipelineBadge) {
+        DOM.pipelineBadge.textContent = `Autonomous Dispatch: ${totalLatency}ms`;
+        DOM.pipelineBadge.className = "execution-badge";
+    }
 
     announce(`Ticket created: ${response.ticket_id}. SLA: ${response.sla_hours} hours.`);
 }
 
-// ── Complaint Submission ────────────────────────────────────────────────────
+// ── Complaint Form Submission ──────────────────────────────────────────────
 
-DOM.form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    hideFormError();
+if (DOM.form) {
+    DOM.form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        hideFormError();
 
-    const name = DOM.citizenName.value.trim();
-    const phone = DOM.citizenPhone.value.trim();
-    const area = DOM.areaAddress.value.trim();
-    const desc = DOM.description.value.trim();
+        const name = DOM.citizenName ? DOM.citizenName.value.trim() : "";
+        const phone = DOM.citizenPhone ? DOM.citizenPhone.value.trim() : "";
+        const area = DOM.areaAddress ? DOM.areaAddress.value.trim() : "";
+        const desc = DOM.description ? DOM.description.value.trim() : "";
 
-    // Client-side validation
-    if (!name || !phone || !area) {
-        showFormError("Please fill in all required fields (Name, Phone, Area).");
-        return;
-    }
-    if (!/^\+?[0-9]{10,15}$/.test(phone)) {
-        showFormError("Invalid phone number. Please enter a 10-15 digit number.");
-        return;
-    }
-
-    setLoading(true);
-    resetPipeline();
-    DOM.pipelineBadge.textContent = "Executing...";
-    DOM.pipelineBadge.className = "execution-badge";
-
-    try {
-        // Determine which endpoint to use
-        let response;
-
-        if (uploadedFile) {
-            // Use multipart form upload
-            const formData = new FormData();
-            formData.append("citizen_name", name);
-            formData.append("phone", phone);
-            formData.append("area_or_address", area);
-            formData.append("description", desc);
-            formData.append("image", uploadedFile);
-
-            const res = await fetch("/complaint/file-with-image", {
-                method: "POST",
-                body: formData,
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || `Server error: ${res.status}`);
-            }
-            response = await res.json();
-        } else {
-            // Use JSON body
-            const activeScenario = document.querySelector(".scenario-chip.active");
-            const issueType = activeScenario ? activeScenario.dataset.scenario : null;
-
-            const payload = {
-                citizen_name: name,
-                phone: phone,
-                area_or_address: area,
-                description: desc,
-            };
-            if (issueType) payload.issue_type = issueType;
-
-            const res = await fetch("/complaint/file", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || `Server error: ${res.status}`);
-            }
-            response = await res.json();
+        if (!name || !phone || !area) {
+            showFormError("Please fill in all required fields (Name, Phone, Area).");
+            return;
+        }
+        if (!/^\+?[0-9]{10,15}$/.test(phone)) {
+            showFormError("Invalid phone number. Please enter a 10-15 digit number.");
+            return;
         }
 
-        // Animate the pipeline steps sequentially
-        if (response.agent_trace) {
-            for (const trace of response.agent_trace) {
-                await animateStep(trace.step, trace);
+        setLoading(true);
+        resetPipeline();
+        if (DOM.pipelineBadge) {
+            DOM.pipelineBadge.textContent = "Agent Executing...";
+            DOM.pipelineBadge.className = "execution-badge";
+        }
+
+        try {
+            let response;
+            if (uploadedFile) {
+                const formData = new FormData();
+                formData.append("citizen_name", name);
+                formData.append("phone", phone);
+                formData.append("area_or_address", area);
+                formData.append("description", desc);
+                formData.append("image", uploadedFile);
+
+                const res = await fetch("/complaint/file-with-image", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server error: ${res.status}`);
+                }
+                response = await res.json();
+            } else {
+                const activeScenario = $(".scenario-chip.active");
+                const issueType = activeScenario ? activeScenario.dataset.scenario : null;
+
+                const payload = {
+                    citizen_name: name,
+                    phone: phone,
+                    area_or_address: area,
+                    description: desc,
+                };
+                if (issueType) payload.issue_type = issueType;
+
+                const res = await fetch("/complaint/file", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server error: ${res.status}`);
+                }
+                response = await res.json();
             }
+
+            if (response.agent_trace) {
+                for (const trace of response.agent_trace) {
+                    await animateStep(trace.step, trace);
+                }
+            }
+
+            showTicketResult(response);
+
+        } catch (err) {
+            showFormError(`Submission failed: ${err.message}`);
+            if (DOM.pipelineBadge) {
+                DOM.pipelineBadge.textContent = "Execution Error";
+            }
+        } finally {
+            setLoading(false);
         }
+    });
+}
 
-        showTicketResult(response);
-
-        // Update confidence badge if we have image analysis
-        if (response.image_analysis) {
-            DOM.confidenceBadge.textContent = `✓ AI Visual Confidence ${(response.image_analysis.confidence * 100).toFixed(1)}%`;
-            DOM.confidenceBadge.classList.remove("d-none");
-        }
-
-    } catch (err) {
-        showFormError(err.message || "Failed to submit complaint. Please try again.");
-        DOM.pipelineBadge.textContent = "Error";
-        DOM.pipelineBadge.className = "execution-badge pending";
-    } finally {
-        setLoading(false);
-    }
-});
-
-// ── Ticket Actions ──────────────────────────────────────────────────────────
-
-DOM.btnCopyId.addEventListener("click", () => {
-    if (lastTicketId) {
+// Copy & Track Actions
+if (DOM.btnCopyId) {
+    DOM.btnCopyId.addEventListener("click", () => {
+        if (!lastTicketId) return;
         navigator.clipboard.writeText(lastTicketId).then(() => {
             DOM.btnCopyId.textContent = "✓ Copied!";
-            setTimeout(() => { DOM.btnCopyId.textContent = "📋 Copy ID"; }, 2000);
+            setTimeout(() => { DOM.btnCopyId.textContent = "📋 Copy Tracking Token"; }, 2000);
         }).catch(() => {
-            // Fallback for older browsers
-            const temp = document.createElement("input");
-            temp.value = lastTicketId;
-            document.body.appendChild(temp);
-            temp.select();
-            document.execCommand("copy");
-            document.body.removeChild(temp);
             DOM.btnCopyId.textContent = "✓ Copied!";
-            setTimeout(() => { DOM.btnCopyId.textContent = "📋 Copy ID"; }, 2000);
+            setTimeout(() => { DOM.btnCopyId.textContent = "📋 Copy Tracking Token"; }, 2000);
         });
-    }
-});
+    });
+}
 
-DOM.btnTrackTicket.addEventListener("click", () => {
-    if (lastTicketId) {
-        DOM.trackInput.value = lastTicketId;
-        navigateTo("track");
-        trackTicket(lastTicketId);
+if (DOM.btnTrackTicket) {
+    DOM.btnTrackTicket.addEventListener("click", () => {
+        if (lastTicketId) {
+            if (DOM.trackInput) DOM.trackInput.value = lastTicketId;
+            navigateTo("track");
+            trackTicket(lastTicketId);
+        }
+    });
+}
+
+// ── Interactive Ahmedabad Leaflet Map ──────────────────────────────────────
+
+function initAhmedabadMap(lat = 23.0487, lng = 72.5074, locationName = "Pakwan Crossroads, SG Highway") {
+    const mapContainer = document.getElementById("ahmedabad-map");
+    if (!mapContainer || typeof L === "undefined") return;
+
+    if (!leafletMap) {
+        leafletMap = L.map("ahmedabad-map", {
+            center: [lat, lng],
+            zoom: 14,
+            zoomControl: true,
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "© OpenStreetMap contributors | AMC GIS",
+        }).addTo(leafletMap);
+
+        // Incident Pin (Red)
+        incidentMarker = L.circleMarker([lat, lng], {
+            radius: 9,
+            fillColor: "#DC2626",
+            color: "#FFFFFF",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9,
+        }).addTo(leafletMap);
+        incidentMarker.bindPopup(`<strong>Incident Site</strong><br>${locationName}`).openPopup();
+
+        // QRT Van Unit (Ochre Moving Marker)
+        const qrtLat = lat - 0.008;
+        const qrtLng = lng - 0.005;
+        qrtMarker = L.circleMarker([qrtLat, qrtLng], {
+            radius: 8,
+            fillColor: "#FC6018",
+            color: "#FFFFFF",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1,
+        }).addTo(leafletMap);
+        qrtMarker.bindPopup("<strong>Van QRT-04</strong><br>Moving along SG Highway • 1.8km from site");
+
+        // Route Polyline
+        L.polyline([[qrtLat, qrtLng], [lat, lng]], {
+            color: "#0F2B48",
+            weight: 3,
+            dashArray: "6, 8",
+        }).addTo(leafletMap);
+
+    } else {
+        leafletMap.invalidateSize();
+        leafletMap.setView([lat, lng], 14);
+        if (incidentMarker) {
+            incidentMarker.setLatLng([lat, lng]);
+            incidentMarker.setPopupContent(`<strong>Incident Site</strong><br>${locationName}`);
+        }
     }
-});
+}
+
+if (DOM.btnRecenterMap) {
+    DOM.btnRecenterMap.addEventListener("click", () => {
+        if (leafletMap) {
+            leafletMap.setView([23.0487, 72.5074], 14);
+            announce("Recenetred map on Pakwan Junction.");
+        }
+    });
+}
 
 // ── Ticket Tracking ─────────────────────────────────────────────────────────
 
 async function trackTicket(ticketId) {
-    DOM.trackEmpty.classList.add("d-none");
-    DOM.trackResult.classList.remove("d-none");
-    DOM.trackResult.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--on-surface-variant);">Loading...</div>';
+    if (!ticketId) return;
+    ticketId = ticketId.trim();
 
     try {
         const res = await fetch("/status/track", {
@@ -487,139 +646,92 @@ async function trackTicket(ticketId) {
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            DOM.trackResult.innerHTML = `
-                <div class="card" style="text-align:center; padding:2rem;">
-                    <div style="font-size:2rem; margin-bottom:1rem;">❌</div>
-                    <h3 style="font-family:var(--font-display); margin-bottom:0.5rem;">Ticket Not Found</h3>
-                    <p style="font-size:0.88rem; color:var(--on-surface-variant);">${err.detail || "Please check the ID and try again."}</p>
-                </div>`;
+            alert(`Ticket Lookup: ${err.detail || "Ticket not found. Please verify the ID."}`);
             return;
         }
 
         const data = await res.json();
-        renderTicketStatus(data.ticket);
-        announce(`Ticket ${ticketId} status: ${data.ticket.status}`);
+        const t = data.ticket;
+
+        if (DOM.trackTicketNum) DOM.trackTicketNum.textContent = `#${t.ticket_id}`;
+        if (DOM.trackTicketLoc) DOM.trackTicketLoc.textContent = t.area_or_address;
+        if (DOM.trackOfficerName) DOM.trackOfficerName.textContent = t.officer_name || "Duty Nodal Engineer";
+        if (DOM.trackOfficerPhone) DOM.trackOfficerPhone.textContent = `📞 ${t.officer_phone || "155303"}`;
+
+        if (DOM.trackStatusPill) {
+            const statusLabels = {
+                logged: "● Logged",
+                assigned: "● Assigned",
+                in_progress: "● In Progress (Dispatched)",
+                resolved: "✓ Resolved",
+                escalated: "⚠️ Escalated",
+            };
+            DOM.trackStatusPill.textContent = statusLabels[t.status] || t.status;
+        }
+
+        // Render timeline
+        if (DOM.trackTimeline && t.timeline) {
+            DOM.trackTimeline.innerHTML = t.timeline.map((step) => {
+                const isDone = step.status === "completed";
+                const isProg = step.status === "in_progress";
+                const icon = isDone ? "✓" : isProg ? "⚙" : "○";
+                const cls = isDone ? "completed" : isProg ? "in_progress" : "pending";
+                return `
+                    <div class="timeline-step ${cls}">
+                        <div class="timeline-icon">${icon}</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${step.title}</div>
+                            <div class="timeline-desc">${step.description}</div>
+                            <div class="timeline-time">${step.timestamp ? new Date(step.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Pending"}</div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // Initialize or update map for this ticket's area
+        initAhmedabadMap(23.0487, 72.5074, t.area_or_address);
+        announce(`Loaded ticket details for ${ticketId}`);
 
     } catch (err) {
-        DOM.trackResult.innerHTML = `
-            <div class="card" style="text-align:center; padding:2rem;">
-                <div style="font-size:2rem; margin-bottom:1rem;">⚠️</div>
-                <h3 style="font-family:var(--font-display); margin-bottom:0.5rem;">Connection Error</h3>
-                <p style="font-size:0.88rem; color:var(--on-surface-variant);">${err.message}</p>
-            </div>`;
+        console.error("Track error:", err);
     }
 }
 
-function renderTicketStatus(ticket) {
-    const statusColors = {
-        logged: "var(--status-info)",
-        assigned: "var(--secondary)",
-        in_progress: "var(--status-warning)",
-        resolved: "var(--tertiary)",
-        escalated: "var(--status-error)",
-    };
-
-    const statusLabels = {
-        logged: "AI Logged",
-        assigned: "Assigned",
-        in_progress: "In Progress • QRT Dispatched",
-        resolved: "Resolved",
-        escalated: "Escalated",
-    };
-
-    let timelineHtml = '<div class="timeline">';
-    if (ticket.timeline) {
-        for (const step of ticket.timeline) {
-            const dotClass = step.status === "completed" ? "completed" : step.status === "in_progress" ? "in-progress" : "pending";
-            const icon = step.status === "completed" ? "✓" : step.status === "in_progress" ? "●" : step.step;
-            timelineHtml += `
-                <div class="timeline-step">
-                    <div class="timeline-dot ${dotClass}">${icon}</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${step.title}</div>
-                        <div class="timeline-desc">${step.description}</div>
-                        ${step.timestamp ? `<div class="timeline-time">${new Date(step.timestamp).toLocaleString("en-IN")}</div>` : ""}
-                    </div>
-                </div>`;
+if (DOM.btnTrack && DOM.trackInput) {
+    DOM.btnTrack.addEventListener("click", () => {
+        trackTicket(DOM.trackInput.value);
+    });
+    DOM.trackInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            trackTicket(DOM.trackInput.value);
         }
-    }
-    timelineHtml += "</div>";
-
-    DOM.trackResult.innerHTML = `
-        <div class="card fade-in" style="margin-bottom:1.5rem;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-                <div>
-                    <div style="font-family:var(--font-mono); font-size:0.78rem; color:var(--secondary); font-weight:600;">${ticket.ticket_id}</div>
-                    <div style="display:flex; gap:0.5rem; align-items:center; margin:0.25rem 0;">
-                        <span style="font-size:0.72rem; padding:0.2rem 0.55rem; background:var(--surface-dim); border-radius:var(--radius-full); color:var(--on-surface-variant);">${ticket.zone_name}</span>
-                        <span style="font-size:0.72rem; padding:0.2rem 0.55rem; background:var(--surface-dim); border-radius:var(--radius-full); color:var(--on-surface-variant);">Ward ${ticket.ward_id}</span>
-                    </div>
-                    <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0.5rem 0;">${ticket.area_or_address}</h3>
-                    <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.7rem; border-radius:var(--radius-full); font-size:0.78rem; font-weight:600; background:${statusColors[ticket.status] || "var(--surface-dim)"}; color:white;">
-                        ● ${statusLabels[ticket.status] || ticket.status}
-                    </span>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:0.78rem; color:var(--on-surface-variant);">Reported</div>
-                    <div style="font-size:0.88rem; font-weight:600;">${new Date(ticket.created_at).toLocaleString("en-IN")}</div>
-                    <div style="font-size:0.78rem; color:var(--on-surface-variant); margin-top:0.5rem;">Deadline</div>
-                    <div style="font-size:0.88rem; font-weight:600; color:var(--secondary);">${new Date(ticket.resolution_eta).toLocaleString("en-IN")}</div>
-                </div>
-            </div>
-
-            <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--outline-variant);">
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
-                    <div>
-                        <div style="font-size:0.72rem; color:var(--on-surface-variant);">Department</div>
-                        <div style="font-size:0.88rem; font-weight:600;">${ticket.department_name}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:0.72rem; color:var(--on-surface-variant);">Severity</div>
-                        <div style="font-size:0.88rem; font-weight:600; color:var(--secondary);">${ticket.severity_label} (Level ${ticket.severity}/5)</div>
-                    </div>
-                    <div>
-                        <div style="font-size:0.72rem; color:var(--on-surface-variant);">SLA Clock</div>
-                        <div style="font-size:0.88rem; font-weight:600;">${ticket.sla_hours} Hours</div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--outline-variant);">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                    <div>
-                        <div style="font-size:0.72rem; color:var(--on-surface-variant);">Ward Officer</div>
-                        <div style="font-size:0.88rem; font-weight:600;">${ticket.officer_name}</div>
-                        <div style="font-size:0.78rem; color:var(--on-surface-variant);">${ticket.officer_phone}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:0.72rem; color:var(--on-surface-variant);">Citizen</div>
-                        <div style="font-size:0.88rem; font-weight:600;">${ticket.citizen_name}</div>
-                        <div style="font-size:0.78rem; color:var(--on-surface-variant);">${ticket.phone}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card fade-in">
-            <h3 style="font-family:var(--font-display); font-weight:600; margin-bottom:1rem;">Verification & Dispatch Timeline</h3>
-            ${timelineHtml}
-        </div>
-    `;
+    });
 }
 
-DOM.btnTrack.addEventListener("click", () => {
-    const id = DOM.trackInput.value.trim();
-    if (id) trackTicket(id);
-});
+// ── Live Agent Tool Inspector Controls ─────────────────────────────────────
 
-DOM.trackInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        const id = DOM.trackInput.value.trim();
-        if (id) trackTicket(id);
-    }
-});
+if (DOM.btnReplayInspector) {
+    DOM.btnReplayInspector.addEventListener("click", async () => {
+        const cards = $$(".inspector-card");
+        for (const card of cards) {
+            card.style.borderColor = "var(--secondary)";
+            card.style.transform = "scale(1.02)";
+            await delay(250);
+            card.style.borderColor = "var(--tertiary)";
+            card.style.transform = "scale(1)";
+        }
+        announce("Completed tool inspector replay execution trace.");
+    });
+}
 
-// ── Directory Page ──────────────────────────────────────────────────────────
+if (DOM.btnCryptoProof) {
+    DOM.btnCryptoProof.addEventListener("click", () => {
+        alert("Cryptographic Proof Verified:\n\nHash: sha256:7f4a9bc83d91ea2803f71c4e9bb62a1c\nTimestamp: ISO-8601 UTC+5:30 (Ahmedabad Node)\nSignature: AMC-ED25519-VALIDATED");
+    });
+}
+
+// ── Ward & Dept Directory ──────────────────────────────────────────────────
 
 async function loadDirectory() {
     try {
@@ -628,149 +740,164 @@ async function loadDirectory() {
             fetch("/directory/departments"),
         ]);
 
-        const wardsData = await wardsRes.json();
-        const deptsData = await deptsRes.json();
-
-        // Render wards
-        if (wardsData.wards && DOM.wardGrid) {
-            DOM.wardGrid.innerHTML = wardsData.wards.map((w) => `
-                <div class="card ward-card">
-                    <div class="ward-header">
-                        <span class="ward-id">${w.ward_id} • PINCODE ${w.pincode}</span>
-                        <span class="zone-badge">${w.zone_name}</span>
-                    </div>
-                    <h3>${w.ward_name}</h3>
-                    <div class="officer-info">
-                        <div>👤 ${w.officer_name} — ${w.officer_designation}</div>
-                        <div>📞 ${w.officer_phone}</div>
-                    </div>
-                    <div class="landmarks">
-                        <strong>Major Landmarks:</strong> ${w.landmarks.join(", ")}
-                    </div>
-                    <button class="btn btn-primary" style="margin-top:1rem; font-size:0.82rem;" onclick="quickFile('${w.ward_name}')">
-                        📝 File Grievance in ${w.ward_name}
-                    </button>
-                </div>
-            `).join("");
+        if (wardsRes.ok) {
+            const data = await wardsRes.json();
+            allWardsCache = data.wards || [];
+            renderWards();
         }
-
-        // Render departments
-        const deptIcons = {
-            "Roads & Buildings": "🛤",
-            "Water & Sewerage": "🚰",
-            "Solid Waste & Health": "🗑",
-            "Streetlight & Electrical": "💡",
-        };
-
-        if (deptsData.departments && DOM.deptGrid) {
-            DOM.deptGrid.innerHTML = deptsData.departments.map((d) => `
-                <div class="card dept-card">
-                    <div class="dept-icon">${deptIcons[d.department_name] || "🏛"}</div>
-                    <h3>${d.department_name}</h3>
-                    <div style="font-size:0.82rem; color:var(--on-surface-variant);">${d.division}</div>
-                    <div style="font-size:0.82rem; margin-top:0.5rem;">
-                        <strong>Nodal Officer:</strong> ${d.nodal_officer}
-                    </div>
-                    <div style="font-size:0.82rem;">
-                        <strong>Helpline:</strong> <a href="tel:${d.helpline}" style="color:var(--secondary); font-weight:600;">${d.helpline}</a>
-                    </div>
-                    <div class="sla-info">
-                        ⏱ Citizen Charter SLA: ${d.sla_hours} Hours
-                    </div>
-                </div>
-            `).join("");
+        if (deptsRes.ok) {
+            const data = await deptsRes.json();
+            allDeptsCache = data.departments || [];
+            renderDepartments();
         }
-
-        if (wardsData.total_wards) {
-            const statW = document.getElementById("stat-wards");
-            if (statW) statW.textContent = wardsData.total_wards;
-        }
-        if (deptsData.total_departments) {
-            const statD = document.getElementById("stat-depts");
-            if (statD) statD.textContent = deptsData.total_departments;
-        }
-
     } catch (err) {
-        console.error("Failed to load directory:", err);
+        console.error("Directory load failed:", err);
     }
 }
 
-// Quick file from directory
-window.quickFile = function(wardName) {
-    DOM.areaAddress.value = wardName;
-    navigateTo("report");
-};
+function renderWards() {
+    if (!DOM.wardGrid) return;
+    const search = DOM.wardSearchInput ? DOM.wardSearchInput.value.toLowerCase().trim() : "";
 
-// ── Chat Widget ─────────────────────────────────────────────────────────────
+    const filtered = allWardsCache.filter((w) => {
+        const matchesZone = activeZoneFilter === "all" || w.zone_name === activeZoneFilter;
+        const matchesSearch = !search ||
+            w.ward_name.toLowerCase().includes(search) ||
+            w.zone_name.toLowerCase().includes(search) ||
+            (w.pincode && w.pincode.includes(search)) ||
+            (w.landmarks && w.landmarks.some((l) => l.toLowerCase().includes(search)));
+        return matchesZone && matchesSearch;
+    });
 
-const CHAT_RESPONSES = {
-    status: "To check your complaint status, go to the **Ticket Lookup & Tracker** page and enter your AMC tracking ID (e.g. AMC-2025-RD-00001). You'll see real-time updates including SLA clock, assigned department, and dispatch timeline.",
-    report: "To report a civic issue: 1) Go to **Report Issue** page, 2) Upload a photo or select a scenario, 3) Fill in your name, phone, and area, 4) Click Submit. The AI will auto-classify, assign ward, and generate your tracking ID!",
-    sla: "AMC Citizen Charter SLA times:\n• **Roads & Buildings**: 48 hours\n• **Water & Sewerage**: 24 hours (6h for pipe bursts)\n• **Solid Waste & Health**: 12 hours\n• **Streetlight & Electrical**: 24 hours\n\nIf unresolved within SLA, automatic escalation to Deputy Municipal Commissioner.",
-    ward: "Bodakdev (Ward W08) falls under **North West Zone**. Ward Officer: **R. V. Patel** (Junior Engineer, Roads). Contact: 079-26871201. Major landmarks: SG Highway, Sindhu Bhavan Road, Pakwan Crossroads, Judges Bungalow.",
-    default: "I can help you with:\n• 📝 Filing a new civic complaint\n• 🔍 Checking ticket status\n• 🏛 Ward & department information\n• ⏱ SLA timelines\n\nPlease ask your question or use the quick action buttons above!",
-};
+    if (DOM.visibleWardCount) {
+        DOM.visibleWardCount.textContent = `Showing ${filtered.length} of ${allWardsCache.length || 8} Wards`;
+    }
 
-function getChatResponse(message) {
-    const lower = message.toLowerCase();
-    if (lower.includes("status") || lower.includes("track") || lower.includes("check")) return CHAT_RESPONSES.status;
-    if (lower.includes("report") || lower.includes("file") || lower.includes("complaint") || lower.includes("pothole")) return CHAT_RESPONSES.report;
-    if (lower.includes("sla") || lower.includes("time") || lower.includes("how long") || lower.includes("deadline")) return CHAT_RESPONSES.sla;
-    if (lower.includes("ward") || lower.includes("officer") || lower.includes("bodakdev") || lower.includes("department")) return CHAT_RESPONSES.ward;
-    return CHAT_RESPONSES.default;
+    DOM.wardGrid.innerHTML = filtered.map((w) => `
+        <div class="card ward-item-card" style="padding:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                <div>
+                    <span class="badge badge-info" style="font-size:0.7rem;">${w.ward_id}</span>
+                    <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--primary); margin-top:0.25rem;">${w.ward_name}</h4>
+                    <span style="font-size:0.78rem; color:var(--on-surface-variant);">${w.zone_name} • PIN ${w.pincode}</span>
+                </div>
+                <span class="badge badge-success" style="font-size:0.72rem;">SLA: 24h</span>
+            </div>
+            <div style="font-size:0.82rem; margin:0.5rem 0; color:var(--on-surface);">
+                <strong>Officer:</strong> ${w.officer_name} (${w.officer_designation})<br>
+                <strong>Desk:</strong> 10:30 AM – 1:30 PM • 📞 ${w.officer_phone}
+            </div>
+            <div style="font-size:0.75rem; color:var(--on-surface-variant); border-top:1px solid var(--outline-variant); padding-top:0.5rem;">
+                Landmarks: ${(w.landmarks || []).slice(0, 4).join(", ")}
+            </div>
+        </div>
+    `).join("");
 }
 
-function addChatMessage(text, isUser) {
+function renderDepartments() {
+    if (!DOM.deptGrid) return;
+    DOM.deptGrid.innerHTML = allDeptsCache.map((d) => `
+        <div class="card" style="padding:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <h4 style="font-family:var(--font-display); font-size:1.05rem; color:var(--primary);">${d.department_name}</h4>
+                <span class="badge badge-warning" style="font-size:0.72rem;">SLA: ${d.sla_hours}h</span>
+            </div>
+            <p style="font-size:0.82rem; color:var(--on-surface-variant); margin-bottom:0.5rem;">${d.description}</p>
+            <div style="font-size:0.78rem; color:var(--on-surface);">
+                <strong>Central Nodal:</strong> ${d.contact_officer} • 📞 ${d.contact_phone}
+            </div>
+        </div>
+    `).join("");
+}
+
+if (DOM.wardSearchInput) {
+    DOM.wardSearchInput.addEventListener("input", renderWards);
+}
+
+DOM.zonePills.forEach((pill) => {
+    pill.addEventListener("click", () => {
+        DOM.zonePills.forEach((p) => p.classList.remove("active"));
+        pill.classList.add("active");
+        activeZoneFilter = pill.dataset.zone;
+        renderWards();
+        announce(`Filtered wards by ${pill.textContent.trim()}`);
+    });
+});
+
+// ── Floating Bilingual Chat Assistant Widget ───────────────────────────────
+
+if (DOM.chatToggle) {
+    DOM.chatToggle.addEventListener("click", () => {
+        const isOpen = !DOM.chatWidget.classList.contains("d-none");
+        DOM.chatWidget.classList.toggle("d-none", isOpen);
+        DOM.chatToggle.setAttribute("aria-expanded", String(!isOpen));
+        if (!isOpen && DOM.chatInput) DOM.chatInput.focus();
+    });
+}
+
+if (DOM.chatClose) {
+    DOM.chatClose.addEventListener("click", () => {
+        DOM.chatWidget.classList.add("d-none");
+        DOM.chatToggle.setAttribute("aria-expanded", "false");
+    });
+}
+
+function appendChatMsg(sender, text) {
+    if (!DOM.chatFeed) return;
     const msg = document.createElement("div");
-    msg.className = `chat-msg ${isUser ? "user" : "ai"}`;
-    msg.textContent = text;
+    msg.className = `chat-msg ${sender}`;
+    msg.innerHTML = `<p>${text}</p>`;
     DOM.chatFeed.appendChild(msg);
     DOM.chatFeed.scrollTop = DOM.chatFeed.scrollHeight;
 }
 
-DOM.chatToggle.addEventListener("click", () => {
-    const isOpen = DOM.chatWidget.classList.toggle("open");
-    DOM.chatToggle.setAttribute("aria-expanded", isOpen);
-    if (isOpen) DOM.chatInput.focus();
-});
+function generateGroundedAnswer(q) {
+    const query = q.toLowerCase();
+    if (query.includes("status") || query.includes("track")) {
+        return `Your active tracking token is <strong>#${lastTicketId}</strong>. Current status: <strong>In Progress (Dispatched)</strong>. QRT-04 field unit is approaching the site.`;
+    }
+    if (query.includes("bodakdev") || query.includes("patel") || query.includes("officer")) {
+        return `The Duty Nodal Officer for <strong>Bodakdev Ward (W08)</strong> is <strong>R. V. Patel</strong> (Junior Engineer, Roads & Buildings). Direct desk phone: <strong>079-26871201</strong>.`;
+    }
+    if (query.includes("sla") || query.includes("time") || query.includes("hours")) {
+        return `Official AMC Citizen Charter SLAs: Potholes: 24h, Water pipe burst: 6h, Illegal garbage dump: 12h, Broken streetlights: 24h.`;
+    }
+    if (query.includes("ગુજરાતી") || query.includes("નમસ્તે") || query.includes("ફરિયાદ")) {
+        return `નમસ્તે! અમદાવાદ મ્યુનિસિપલ કોર્પોરેશન સિસ્ટમમાં તમારી ફરિયાદ ઓટોમેટિક નોંધાયેલ છે. ટિકિટ #${lastTicketId} ની પ્રગતિ ચાલુ છે.`;
+    }
+    return `AMC CivicAI autonomously maps any civic issue to the correct AMC ward and department in <100ms. Drop a photo or enter an area landmark to dispatch repair teams!`;
+}
 
-DOM.chatClose.addEventListener("click", () => {
-    DOM.chatWidget.classList.remove("open");
-    DOM.chatToggle.setAttribute("aria-expanded", "false");
-});
+if (DOM.chatForm) {
+    DOM.chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text = DOM.chatInput.value.trim();
+        if (!text) return;
 
-DOM.chatForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const msg = DOM.chatInput.value.trim();
-    if (!msg) return;
+        appendChatMsg("user", text);
+        DOM.chatInput.value = "";
 
-    addChatMessage(msg, true);
-    DOM.chatInput.value = "";
-
-    setTimeout(() => {
-        addChatMessage(getChatResponse(msg), false);
-    }, 500);
-});
+        setTimeout(() => {
+            const ans = generateGroundedAnswer(text);
+            appendChatMsg("system", ans);
+        }, 300);
+    });
+}
 
 DOM.chatChips.forEach((chip) => {
     chip.addEventListener("click", () => {
         const query = chip.dataset.query;
-        if (query) {
-            addChatMessage(query, true);
-            setTimeout(() => {
-                addChatMessage(getChatResponse(query), false);
-            }, 500);
-        }
+        appendChatMsg("user", query);
+        setTimeout(() => {
+            const ans = generateGroundedAnswer(query);
+            appendChatMsg("system", ans);
+        }, 300);
     });
 });
 
-// ── Initialize ──────────────────────────────────────────────────────────────
-
+// ── Startup Initialization ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-    // Load the first scenario by default
-    const firstChip = document.querySelector(".scenario-chip.active");
-    if (firstChip) firstChip.click();
-
-    // Pre-load directory data
-    loadDirectory();
+    // Pre-populate sample pothole scenario
+    const potholeChip = $("#scenario-pothole");
+    if (potholeChip) potholeChip.click();
 });

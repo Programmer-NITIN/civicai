@@ -217,6 +217,41 @@ def create_ticket(
     return ticket
 
 
+def _get_demo_ticket() -> TicketRecord:
+    """Return pre-configured Stitch demo ticket for #AMC-2025-RD-88421."""
+    now = datetime.now(_IST)
+    created = now - timedelta(hours=3)
+    return TicketRecord(
+        ticket_id="AMC-2025-RD-88421",
+        citizen_name="Keval M. Shah",
+        phone="9825012345",
+        area_or_address="Pakwan Cross Road, Opp. Sindhu Bhavan Road Entry, S.G. Highway",
+        description="Severe Level-4 road crater damaging vehicles near Pakwan junction.",
+        issue_type="pothole",
+        severity=4,
+        severity_label="URGENT",
+        urgency="URGENT",
+        ward_id="W08",
+        ward_name="Bodakdev",
+        zone_name="North West Zone",
+        department_id="ROADS_NW",
+        department_name="Roads & Buildings",
+        sla_hours=24,
+        officer_name="R. V. Patel",
+        officer_phone="079-26871201",
+        status=TicketStatus.IN_PROGRESS,
+        created_at=created.isoformat(),
+        updated_at=(now - timedelta(minutes=45)).isoformat(),
+        resolution_eta=(created + timedelta(hours=24)).isoformat(),
+        timeline=_build_timeline(
+            TicketStatus.IN_PROGRESS,
+            created,
+            "Roads & Buildings",
+            "R. V. Patel",
+        ),
+    )
+
+
 def get_ticket(ticket_id: str) -> Optional[TicketRecord]:
     """Agent Tool: Retrieve a ticket by its tracking ID.
 
@@ -229,7 +264,11 @@ def get_ticket(ticket_id: str) -> Optional[TicketRecord]:
     with _ticket_lock:
         if ticket_id not in _ticket_store:
             _load_from_disk()
-        return _ticket_store.get(ticket_id)
+        if ticket_id in _ticket_store:
+            return _ticket_store[ticket_id]
+        if ticket_id == "AMC-2025-RD-88421":
+            return _get_demo_ticket()
+        return None
 
 
 def get_all_tickets() -> List[TicketRecord]:

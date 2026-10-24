@@ -78,11 +78,11 @@ async def add_security_headers(request: Request, call_next) -> Response:
     )
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob: https://*.googleapis.com; "
-        "connect-src 'self' https://*.googleapis.com; "
+        "img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://*.tile.openstreetmap.org; "
+        "connect-src 'self' https://*.googleapis.com https://*.tile.openstreetmap.org; "
         "frame-ancestors 'none'"
     )
 
