@@ -1834,13 +1834,26 @@ main {
 }
 
 /* ── Interactive Ahmedabad Leaflet Map & QRT Telemetry ───────────────────── */
+.ward-map-label {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(15, 43, 72, 0.2) !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #0F2B48 !important;
+    padding: 2px 6px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
 .interactive-map {
     width: 100%;
-    height: 280px;
+    height: 380px;
+    min-height: 380px;
     border-radius: var(--radius-lg);
     border: 1px solid var(--outline-variant);
     margin-top: 0.5rem;
     z-index: 10;
+    position: relative;
+    background: #e5eeff;
 }
 .qrt-telemetry-banner {
     display: flex;

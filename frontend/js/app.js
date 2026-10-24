@@ -223,7 +223,13 @@ function navigateTo(page) {
     if (page === "directory" && allWardsCache.length === 0) {
         loadDirectory();
     } else if (page === "track") {
-        initAhmedabadMap();
+        setTimeout(() => {
+            initAhmedabadMap();
+            if (leafletMap) leafletMap.invalidateSize();
+        }, 50);
+        setTimeout(() => {
+            if (leafletMap) leafletMap.invalidateSize();
+        }, 300);
     }
 }
 
@@ -563,6 +569,122 @@ if (DOM.btnTrackTicket) {
     });
 }
 
+// ── Ahmedabad Ward GIS Boundaries Specification ───────────────────────────
+const AHMEDABAD_WARDS_GIS = [
+    {
+        id: "W08",
+        name: "Bodakdev",
+        zone: "North West Zone",
+        color: "#0F2B48",
+        officer: "R. V. Patel (Junior Engineer)",
+        center: [23.0487, 72.5074],
+        coords: [
+            [23.065, 72.490],
+            [23.067, 72.525],
+            [23.036, 72.528],
+            [23.033, 72.492],
+        ],
+    },
+    {
+        id: "W09",
+        name: "Thaltej",
+        zone: "North West Zone",
+        color: "#2563EB",
+        officer: "D. C. Joshi (Chief Inspector)",
+        center: [23.0569, 72.4967],
+        coords: [
+            [23.085, 72.478],
+            [23.082, 72.515],
+            [23.065, 72.518],
+            [23.063, 72.480],
+        ],
+    },
+    {
+        id: "W12",
+        name: "Navrangpura",
+        zone: "West Zone",
+        color: "#059669",
+        officer: "K. M. Solanki (Chief Inspector)",
+        center: [23.0350, 72.5610],
+        coords: [
+            [23.052, 72.540],
+            [23.050, 72.578],
+            [23.022, 72.575],
+            [23.024, 72.542],
+        ],
+    },
+    {
+        id: "W15",
+        name: "Satellite",
+        zone: "West Zone",
+        color: "#10B981",
+        officer: "A. P. Shah (Junior Engineer)",
+        center: [23.0225, 72.5290],
+        coords: [
+            [23.036, 72.510],
+            [23.037, 72.545],
+            [23.008, 72.542],
+            [23.009, 72.508],
+        ],
+    },
+    {
+        id: "W24",
+        name: "Maninagar",
+        zone: "South Zone",
+        color: "#E65100",
+        officer: "N. S. Prajapati (Chief Inspector)",
+        center: [23.0070, 72.6040],
+        coords: [
+            [23.022, 72.585],
+            [23.023, 72.628],
+            [22.990, 72.625],
+            [22.992, 72.583],
+        ],
+    },
+    {
+        id: "W03",
+        name: "Dariapur",
+        zone: "Central Zone",
+        color: "#D97706",
+        officer: "M. R. Syed (Senior Inspector)",
+        center: [23.0290, 72.5920],
+        coords: [
+            [23.045, 72.575],
+            [23.046, 72.610],
+            [23.018, 72.608],
+            [23.020, 72.576],
+        ],
+    },
+    {
+        id: "W30",
+        name: "Vastral",
+        zone: "East Zone",
+        color: "#8B5CF6",
+        officer: "B. K. Rathod (Junior Engineer)",
+        center: [22.9930, 72.6480],
+        coords: [
+            [23.018, 72.630],
+            [23.020, 72.678],
+            [22.970, 72.675],
+            [22.972, 72.628],
+        ],
+    },
+    {
+        id: "W42",
+        name: "Chandkheda",
+        zone: "North Zone",
+        color: "#EC4899",
+        officer: "P. S. Trivedi (Chief Inspector)",
+        center: [23.1080, 72.5910],
+        coords: [
+            [23.135, 72.565],
+            [23.138, 72.618],
+            [23.090, 72.615],
+            [23.092, 72.563],
+        ],
+    },
+];
+
 // ── Interactive Ahmedabad Leaflet Map ──────────────────────────────────────
 
 function initAhmedabadMap(lat = 23.0487, lng = 72.5074, locationName = "Pakwan Crossroads, SG Highway") {
@@ -571,24 +693,75 @@ function initAhmedabadMap(lat = 23.0487, lng = 72.5074, locationName = "Pakwan C
 
     if (!leafletMap) {
         leafletMap = L.map("ahmedabad-map", {
-            center: [lat, lng],
-            zoom: 14,
+            center: [23.045, 72.540],
+            zoom: 12,
             zoomControl: true,
         });
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // OpenStreetMap Tile Layer (Free, Zero API Token)
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
-            attribution: "© OpenStreetMap contributors | AMC GIS",
+            attribution: "© OpenStreetMap contributors | AMC City GIS",
         }).addTo(leafletMap);
 
-        // Incident Pin (Red)
+        // Draw All 8 Ward Boundary Polygons with Borders
+        AHMEDABAD_WARDS_GIS.forEach((ward) => {
+            const polygon = L.polygon(ward.coords, {
+                color: ward.color,
+                weight: 2.5,
+                opacity: 0.9,
+                fillColor: ward.color,
+                fillOpacity: 0.16,
+                dashArray: "5, 5",
+            }).addTo(leafletMap);
+
+            polygon.bindTooltip(`<strong>${ward.name} (${ward.id})</strong><br><small>${ward.zone}</small>`, {
+                permanent: true,
+                direction: "center",
+                className: "ward-map-label",
+            });
+
+            polygon.bindPopup(`
+                <div style="font-family:sans-serif; padding:4px;">
+                    <strong style="color:${ward.color}; font-size:14px;">Ward ${ward.id}: ${ward.name}</strong><br>
+                    <span style="font-size:12px; color:#64748B;">${ward.zone}</span><br>
+                    <hr style="margin:4px 0; border:none; border-top:1px solid #E2E8F0;">
+                    <small><strong>Nodal Officer:</strong> ${ward.officer}</small><br>
+                    <small><strong>Grievance SLA:</strong> 24h Standard</small>
+                </div>
+            `);
+
+            polygon.on("mouseover", function () {
+                this.setStyle({ weight: 4, fillOpacity: 0.35, dashArray: "" });
+            });
+            polygon.on("mouseout", function () {
+                this.setStyle({ weight: 2.5, fillOpacity: 0.16, dashArray: "5, 5" });
+            });
+        });
+
+        // Sabarmati River Corridor Overlay (Blue River Path)
+        const sabarmatiRiver = [
+            [23.130, 72.595],
+            [23.095, 72.590],
+            [23.060, 72.578],
+            [23.035, 72.575],
+            [23.010, 72.580],
+            [22.980, 72.590],
+        ];
+        L.polyline(sabarmatiRiver, {
+            color: "#0284C7",
+            weight: 5,
+            opacity: 0.8,
+        }).addTo(leafletMap).bindTooltip("Sabarmati Riverfront", { sticky: true });
+
+        // Incident Pin (Red Pulsing Pin)
         incidentMarker = L.circleMarker([lat, lng], {
-            radius: 9,
+            radius: 10,
             fillColor: "#DC2626",
             color: "#FFFFFF",
-            weight: 2,
+            weight: 3,
             opacity: 1,
-            fillOpacity: 0.9,
+            fillOpacity: 0.95,
         }).addTo(leafletMap);
         incidentMarker.bindPopup(`<strong>Incident Site</strong><br>${locationName}`).openPopup();
 
@@ -596,25 +769,25 @@ function initAhmedabadMap(lat = 23.0487, lng = 72.5074, locationName = "Pakwan C
         const qrtLat = lat - 0.008;
         const qrtLng = lng - 0.005;
         qrtMarker = L.circleMarker([qrtLat, qrtLng], {
-            radius: 8,
+            radius: 9,
             fillColor: "#FC6018",
             color: "#FFFFFF",
-            weight: 2,
+            weight: 2.5,
             opacity: 1,
             fillOpacity: 1,
         }).addTo(leafletMap);
-        qrtMarker.bindPopup("<strong>Van QRT-04</strong><br>Moving along SG Highway • 1.8km from site");
+        qrtMarker.bindPopup("<strong>Van QRT-04</strong><br>Approaching via SG Highway • 1.8km from site");
 
-        // Route Polyline
+        // Dispatch Route Line
         L.polyline([[qrtLat, qrtLng], [lat, lng]], {
             color: "#0F2B48",
-            weight: 3,
+            weight: 3.5,
             dashArray: "6, 8",
         }).addTo(leafletMap);
 
     } else {
         leafletMap.invalidateSize();
-        leafletMap.setView([lat, lng], 14);
+        leafletMap.setView([lat, lng], 13);
         if (incidentMarker) {
             incidentMarker.setLatLng([lat, lng]);
             incidentMarker.setPopupContent(`<strong>Incident Site</strong><br>${locationName}`);
@@ -626,7 +799,7 @@ if (DOM.btnRecenterMap) {
     DOM.btnRecenterMap.addEventListener("click", () => {
         if (leafletMap) {
             leafletMap.setView([23.0487, 72.5074], 14);
-            announce("Recenetred map on Pakwan Junction.");
+            announce("Recentered map on Pakwan Junction.");
         }
     });
 }
