@@ -16,7 +16,38 @@
     <link rel="stylesheet" href="css/leaflet.css">
     
     <!-- Custom Design Tokens & Layout -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3.2">
+    
+    <!-- Critical Pipeline & Component Styling (Guaranteed zero-FOUC and cache-proof rendering) -->
+    <style>
+        .pipeline-header { display: flex !important; align-items: flex-start !important; justify-content: space-between !important; margin-bottom: 1.25rem !important; }
+        .execution-badge { background: #ECFDF5 !important; color: #059669 !important; font-size: 0.75rem !important; font-weight: 700 !important; padding: 0.25rem 0.65rem !important; border-radius: 9999px !important; border: 1px solid #A7F3D0 !important; display: inline-block !important; }
+        .pipeline-steps { display: flex !important; flex-direction: column !important; gap: 0.85rem !important; }
+        .pipeline-step { display: flex !important; flex-direction: row !important; gap: 1rem !important; position: relative !important; align-items: stretch !important; }
+        .step-marker { display: flex !important; flex-direction: column !important; align-items: center !important; width: 2.25rem !important; flex-shrink: 0 !important; }
+        .step-dot { width: 2.25rem !important; height: 2.25rem !important; border-radius: 50% !important; background: #F1F5F9 !important; border: 2px solid #CBD5E1 !important; display: flex !important; align-items: center !important; justify-content: center !important; font-weight: 700 !important; color: #0F2B48 !important; font-size: 0.85rem !important; transition: all 0.3s ease !important; z-index: 2 !important; flex-shrink: 0 !important; }
+        .step-dot.in-progress { background: #E65100 !important; border-color: #E65100 !important; color: #FFFFFF !important; box-shadow: 0 0 0 4px rgba(230, 81, 0, 0.25) !important; animation: pulse-dot 1.5s infinite !important; }
+        .step-dot.completed { background: #059669 !important; border-color: #059669 !important; color: #FFFFFF !important; }
+        .step-line { width: 2px !important; flex: 1 !important; background: #CBD5E1 !important; margin: 0.35rem 0 !important; min-height: 1.5rem !important; }
+        .pipeline-step:last-child .step-line { display: none !important; }
+        .step-card { flex: 1 !important; background: #FFFFFF !important; border: 1px solid #E2E8F0 !important; border-radius: 0.65rem !important; padding: 0.9rem 1.15rem !important; box-shadow: 0 1px 3px rgba(15, 43, 72, 0.05) !important; transition: all 0.25s ease !important; }
+        .step-card:hover { border-color: #0F2B48 !important; box-shadow: 0 4px 12px rgba(15, 43, 72, 0.08) !important; }
+        .step-header { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 0.5rem !important; margin-bottom: 0.35rem !important; }
+        .step-tool { font-family: 'JetBrains Mono', monospace !important; font-size: 0.85rem !important; font-weight: 700 !important; color: #0F2B48 !important; }
+        .step-desc { font-size: 0.8rem !important; color: #475569 !important; line-height: 1.5 !important; }
+        .step-body { margin-top: 0.5rem !important; padding-top: 0.5rem !important; border-top: 1px dashed #CBD5E1 !important; }
+        .step-json { font-family: 'JetBrains Mono', monospace !important; font-size: 0.72rem !important; background: #00162D !important; color: #85F8C4 !important; padding: 0.6rem 0.85rem !important; border-radius: 6px !important; overflow-x: auto !important; line-height: 1.5 !important; }
+        .badge { display: inline-flex !important; align-items: center !important; gap: 0.25rem !important; padding: 0.25rem 0.65rem !important; border-radius: 9999px !important; font-size: 0.72rem !important; font-weight: 700 !important; }
+        .badge-pending { background: #F1F5F9 !important; color: #64748B !important; border: 1px solid #CBD5E1 !important; }
+        .badge-warning { background: #FFF7ED !important; color: #C2410C !important; border: 1px solid #FED7AA !important; }
+        .badge-success { background: #ECFDF5 !important; color: #059669 !important; border: 1px solid #A7F3D0 !important; }
+        .badge-info { background: #EFF6FF !important; color: #1D4ED8 !important; border: 1px solid #BFDBFE !important; }
+        @keyframes pulse-dot {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(230, 81, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 81, 0, 0); }
+        }
+    </style>
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to Main Content</a>
@@ -899,6 +930,6 @@
     <script src="js/leaflet.js"></script>
 
     <!-- Application Script -->
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=3.2"></script>
 </body>
 </html>

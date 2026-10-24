@@ -1408,6 +1408,151 @@ main {
     }
 }
 
+/* ── Autonomous Agent Pipeline Step Cards (Stitch UI) ────────────────────── */
+.pipeline-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+.execution-badge {
+    background: #ECFDF5;
+    color: #059669;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    border: 1px solid #A7F3D0;
+}
+.pipeline-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.pipeline-step {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+    align-items: stretch;
+}
+.step-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 2rem;
+    flex-shrink: 0;
+}
+.step-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #F1F5F9;
+    border: 2px solid #CBD5E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #0F2B48;
+    font-size: 0.82rem;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+.step-dot.in-progress {
+    background: #E65100;
+    border-color: #E65100;
+    color: #FFFFFF;
+    box-shadow: 0 0 0 4px rgba(230, 81, 0, 0.2);
+}
+.step-dot.completed {
+    background: #059669;
+    border-color: #059669;
+    color: #FFFFFF;
+}
+.step-line {
+    width: 2px;
+    flex: 1;
+    background: #E2E8F0;
+    margin: 0.25rem 0;
+    min-height: 1.5rem;
+}
+.pipeline-step:last-child .step-line {
+    display: none;
+}
+.step-card {
+    flex: 1;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    transition: all 0.25s ease;
+}
+.step-card:hover {
+    border-color: #0F2B48;
+    box-shadow: 0 2px 6px rgba(15, 43, 72, 0.06);
+}
+.step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+.step-tool {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0F2B48;
+}
+.step-desc {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.45;
+}
+.step-body {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #CBD5E1;
+}
+.step-json {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    background: #00162D;
+    color: #85F8C4;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.badge-pending {
+    background: #F1F5F9;
+    color: #64748B;
+    border: 1px solid #CBD5E1;
+}
+.badge-warning {
+    background: #FFF7ED;
+    color: #C2410C;
+    border: 1px solid #FED7AA;
+}
+.badge-success {
+    background: #ECFDF5;
+    color: #059669;
+    border: 1px solid #A7F3D0;
+}
+.badge-info {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Stitch Nagarik Sahay Component Enhancements
    ─────────────────────────────────────────────────────────────────────────── */

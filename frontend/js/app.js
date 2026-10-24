@@ -698,11 +698,42 @@ function initAhmedabadMap(lat = 23.0487, lng = 72.5074, locationName = "Pakwan C
             zoomControl: true,
         });
 
-        // OpenStreetMap Tile Layer (Free, Zero API Token)
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // 1. Google Satellite Hybrid (Real GPS Satellite Imagery + Roads + Names)
+        const googleSatHybrid = L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", {
+            subdomains: ["0", "1", "2", "3"],
+            maxZoom: 20,
+            attribution: "Satellite Imagery © Google | AMC GPS Live Feed",
+        });
+
+        // 2. High-Resolution GPS Satellite Aerial Imagery (Esri World Imagery)
+        const esriSatellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 19,
+            attribution: "Satellite Imagery © Esri, Maxar, Earthstar Geographics | AMC GPS Telemetry",
+        });
+
+        // 3. OpenStreetMap Street View
+        const streetLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
             attribution: "© OpenStreetMap contributors | AMC City GIS",
-        }).addTo(leafletMap);
+        });
+
+        // Default to GPS Satellite Hybrid View
+        googleSatHybrid.addTo(leafletMap);
+
+        // Add Layer Switcher Control
+        L.control.layers(
+            {
+                "🛰️ GPS Satellite View (Hybrid)": googleSatHybrid,
+                "🌍 Esri Aerial Imagery": esriSatellite,
+                "🗺️ Street Map": streetLayer,
+            },
+            null,
+            { position: "topright", collapsed: false }
+        ).addTo(leafletMap);
+
+        setTimeout(() => {
+            if (leafletMap) leafletMap.invalidateSize();
+        }, 200);
 
         // Draw All 8 Ward Boundary Polygons with Borders
         AHMEDABAD_WARDS_GIS.forEach((ward) => {

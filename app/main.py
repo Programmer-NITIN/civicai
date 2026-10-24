@@ -81,8 +81,8 @@ async def add_security_headers(request: Request, call_next) -> Response:
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://*.tile.openstreetmap.org; "
-        "connect-src 'self' https://*.googleapis.com https://*.tile.openstreetmap.org; "
+        "img-src 'self' data: blob: https://*.googleapis.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com https://*.google.com https://mt0.google.com https://mt1.google.com https://mt2.google.com https://mt3.google.com; "
+        "connect-src 'self' https://*.googleapis.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.arcgisonline.com https://server.arcgisonline.com https://*.google.com https://mt0.google.com https://mt1.google.com https://mt2.google.com https://mt3.google.com; "
         "frame-ancestors 'none'"
     )
 
