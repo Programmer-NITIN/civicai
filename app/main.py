@@ -118,8 +118,30 @@ app.include_router(routes_status.router, tags=["Ticket Tracking"])
 app.include_router(routes_wards.router, tags=["Ward & Department Directory"])
 
 
-# ── Static frontend ─────────────────────────────────────────────────────────
+import os
+from fastapi.responses import FileResponse, HTMLResponse
+
+# ── Root index handler (Ensures Vercel function serves index if rewritten to root) ─
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    for cand in ("public/index.html", "frontend/index.html", "index.html"):
+        if os.path.exists(cand):
+            return FileResponse(cand)
+    return HTMLResponse("<h1>AMC CivicAI</h1><p>API operational.</p>")
+
+
+# ── Static mounts ────────────────────────────────────────────────────────────
+for sub in ("css", "js", "assets"):
+    target = f"frontend/{sub}" if os.path.isdir(f"frontend/{sub}") else sub
+    if os.path.isdir(target):
+        try:
+            app.mount(f"/{sub}", StaticFiles(directory=target), name=sub)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
 try:
-    app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+    frontend_dir = "public" if os.path.isdir("public") else "frontend"
+    app.mount("/static", StaticFiles(directory=frontend_dir, html=True), name="static")
 except Exception:  # pylint: disable=broad-exception-caught
     logger.warning("Frontend directory not found — API-only mode.")
+
