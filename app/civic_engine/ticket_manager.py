@@ -15,10 +15,14 @@ Design:
   - Max 10,000 tickets — oldest evicted when full (LRU).
 """
 
+import json
 import logging
+import os
+import tempfile
 import threading
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, List, Dict
 
 from app.models.complaint_models import (
@@ -36,6 +40,28 @@ _MAX_TICKETS = 10_000
 _ticket_store: OrderedDict[str, TicketRecord] = OrderedDict()
 _ticket_lock = threading.Lock()
 _ticket_counter: Dict[str, int] = {}
+_DISK_CACHE = Path(tempfile.gettempdir()) / "civicai_ticket_store.json"
+
+
+def _save_to_disk() -> None:
+    """Persist tickets to disk cache for serverless environments."""
+    try:
+        data = {k: v.model_dump(mode="json") for k, v in _ticket_store.items()}
+        _DISK_CACHE.write_text(json.dumps(data), encoding="utf-8")
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("Disk cache save failed: %s", exc)
+
+
+def _load_from_disk() -> None:
+    """Hydrate tickets from disk cache if in-memory store is empty."""
+    try:
+        if _DISK_CACHE.exists():
+            raw = json.loads(_DISK_CACHE.read_text(encoding="utf-8"))
+            for k, v in raw.items():
+                if k not in _ticket_store:
+                    _ticket_store[k] = TicketRecord(**v)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("Disk cache load failed: %s", exc)
 
 # IST timezone offset (+5:30)
 _IST = timezone(timedelta(hours=5, minutes=30))
@@ -185,6 +211,7 @@ def create_ticket(
         if len(_ticket_store) >= _MAX_TICKETS:
             _ticket_store.popitem(last=False)
         _ticket_store[ticket_id] = ticket
+        _save_to_disk()
 
     logger.info("Ticket created: %s for %s", ticket_id, area_or_address)
     return ticket
@@ -200,12 +227,16 @@ def get_ticket(ticket_id: str) -> Optional[TicketRecord]:
         TicketRecord if found, None otherwise.
     """
     with _ticket_lock:
+        if ticket_id not in _ticket_store:
+            _load_from_disk()
         return _ticket_store.get(ticket_id)
 
 
 def get_all_tickets() -> List[TicketRecord]:
     """Return all tickets in the store (newest first)."""
     with _ticket_lock:
+        if not _ticket_store:
+            _load_from_disk()
         return list(reversed(_ticket_store.values()))
 
 
@@ -223,6 +254,8 @@ def update_ticket_status(
         Updated TicketRecord if found, None otherwise.
     """
     with _ticket_lock:
+        if ticket_id not in _ticket_store:
+            _load_from_disk()
         ticket = _ticket_store.get(ticket_id)
         if ticket is None:
             return None
@@ -239,6 +272,7 @@ def update_ticket_status(
             ),
         })
         _ticket_store[ticket_id] = updated
+        _save_to_disk()
 
     logger.info("Ticket %s updated to %s", ticket_id, new_status.value)
     return updated
@@ -249,3 +283,8 @@ def clear_store() -> None:
     with _ticket_lock:
         _ticket_store.clear()
         _ticket_counter.clear()
+        try:
+            if _DISK_CACHE.exists():
+                _DISK_CACHE.unlink()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
